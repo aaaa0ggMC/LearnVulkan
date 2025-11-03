@@ -6,6 +6,70 @@ extern std::vector<const char *> app_validation_layers;
 void Application::setupVulkan(){
     vk_createInstance();
     vk_setupDebugMessenger();
+    vk_pickPhysicalDevice();
+}
+
+void Application::vk_pickPhysicalDevice(){
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance,&deviceCount,nullptr);
+    if(!deviceCount){
+        lg(LOG_ERROR) << "No physical device found!" << endlog;
+    }
+    std::vector<VkPhysicalDevice> devices (deviceCount);
+    vkEnumeratePhysicalDevices(instance,&deviceCount,devices.data());
+
+    int maxScore = 0;
+    int s_i = -1;
+    VkPhysicalDevice selected = VK_NULL_HANDLE;
+
+    int i = 0;
+    for(auto & dev : devices){
+        int ranking = 0;
+        VkPhysicalDeviceProperties devProperty;
+        VkPhysicalDeviceFeatures devFeatures;
+
+        vkGetPhysicalDeviceProperties(dev,&devProperty);
+        vkGetPhysicalDeviceFeatures(dev,&devFeatures);
+
+        lg(LOG_INFO) << "GPU" << i << ":" << devProperty.deviceName << endlog;
+        ++i;
+
+        /// find queue families
+        {
+            uint32_t qe_c;
+            vkGetPhysicalDeviceQueueFamilyProperties(dev,&qe_c,nullptr);
+            std::vector<VkQueueFamilyProperties> qeFamilies (qe_c);
+            vkGetPhysicalDeviceQueueFamilyProperties(dev,&qe_c,qeFamilies.data());
+            bool ok = false;
+            for(auto & q : qeFamilies){
+                if(q.queueFlags & VK_QUEUE_GRAPHICS_BIT){
+                    ok = true;
+                    break;
+                }
+            }
+            if(!ok){
+                continue;
+            }
+        }
+
+        if(devFeatures.geometryShader){
+            if(devProperty.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU){
+                ranking += 1000;
+            }
+
+            ranking += devProperty.limits.maxImageDimension2D; 
+        }
+
+        if(ranking >= maxScore){
+            maxScore = ranking;
+            selected = dev;
+            s_i = i-1;
+        }
+    }
+
+    lg(LOG_INFO) << "GPU seleted:GPU" << s_i << endlog;
+    physicalDevice = selected;
+
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(

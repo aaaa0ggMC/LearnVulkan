@@ -9,6 +9,7 @@ void Application::setup(){
 }
 
 void Application::cleanup(){
+
     if(app_enable_validation){
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,"vkDestroyDebugUtilsMessengerEXT");
         if(func != nullptr)func(instance,debugMessenger,nullptr);

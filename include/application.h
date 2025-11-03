@@ -29,6 +29,8 @@ struct Application{
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
 
+    VkPhysicalDevice physicalDevice { VK_NULL_HANDLE };
+
     inline Application():
     lg ("LearnVK",logger),
     lg_v ("Vulkan",logger)
@@ -46,6 +48,7 @@ struct Application{
     /// vulkan setups
     void vk_createInstance();
     void vk_setupDebugMessenger();
+    void vk_pickPhysicalDevice();
 
     ~Application();
 };
