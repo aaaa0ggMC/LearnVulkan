@@ -9,7 +9,7 @@ void Application::setup(){
 }
 
 void Application::cleanup(){
-
+    vkDestroySwapchainKHR(device,swapChain,nullptr);
     vkDestroyDevice(device,nullptr);
 
     if(app_enable_validation){

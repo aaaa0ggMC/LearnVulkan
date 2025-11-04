@@ -1,3 +1,4 @@
+#define GLFW_INCLUDE_VULKAN
 #include "application.h"
 #include "vkutil.h"
 
@@ -10,12 +11,59 @@ void Application::setupVulkan(){
     vk_createSurface();
     vk_pickPhysicalDevice();
     vk_createLogicalDevice();
+    vk_createSwapChain();
+}
+
+void Application::vk_createSwapChain(){
+    SwapChainsSupportDetails det = get_swapchains_support_detail(physicalDevice,surface);
+    auto fmt = choose_surface_format(det.formats);
+    auto mode = choose_swapchains_present_mode(det.presentModes);
+    auto extent = choose_swap_extent(det.capabilities,window);
+
+    uint32_t imageCount = det.capabilities.minImageCount + 1;
+    if(det.capabilities.maxImageCount > 0 && imageCount > det.capabilities.maxImageCount){
+        imageCount = det.capabilities.maxImageCount;
+    }
+
+    VkSwapchainCreateInfoKHR createInfo {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = surface;
+    createInfo.minImageCount = imageCount;
+    createInfo.imageColorSpace = fmt.colorSpace;
+    createInfo.imageFormat = fmt.format;
+    createInfo.imageExtent = extent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    QueueFamilyIndices ind = find_queue_family(physicalDevice,surface);
+    uint32_t queues[] = {*ind.graphicsFamily,*ind.presentFamily};
+    if(ind.graphicsFamily != ind.presentFamily){
+        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        createInfo.queueFamilyIndexCount = 2;
+        createInfo.pQueueFamilyIndices = queues;
+    }else{
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.queueFamilyIndexCount = 0;
+        createInfo.pQueueFamilyIndices = nullptr;
+    }
+    createInfo.preTransform = det.capabilities.currentTransform;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+    createInfo.presentMode = mode;
+    createInfo.clipped = VK_TRUE;
+
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    if(VkResult result = vkCreateSwapchainKHR(device,&createInfo,nullptr,&swapChain);result != VK_SUCCESS){
+        lg(LOG_CRITI) << "Failed to create Vulkan swapchains:" << (int)result << endlog;
+        std::exit(-1);
+    }else lg(LOG_INFO) << "vkSwapChain:OK" << endlog;
 }
 
 void Application::vk_createSurface(){
     if(VkResult result = glfwCreateWindowSurface(instance,window,nullptr,&surface);
         result != VK_SUCCESS){
-        lg(LOG_CRITI) << "Failed to create Vulkan surface!" << endlog;
+        lg(LOG_CRITI) << "Failed to create Vulkan surface:" << (int)result << endlog;
         std::exit(-1);
     }else lg(LOG_INFO) << "vkSurface:OK" << endlog;
 }
@@ -89,7 +137,8 @@ void Application::vk_pickPhysicalDevice(){
         ++i;
 
         /// find queue families
-        if(!find_queue_family(dev,surface).ok() || !check_device_extension_support(dev,app_device_extensions)){
+        if(!find_queue_family(dev,surface).ok() || !check_device_extension_support(dev,app_device_extensions)
+          || !get_swapchains_support_detail(dev,surface).ok()){
             continue;
         }
 

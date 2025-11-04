@@ -12,6 +12,54 @@ static bool operator==(const VkExtensionProperties & in,const char * d){
     return !std::strcmp(in.extensionName,d);
 }
 
+VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR & cap,GLFWwindow * window){
+    if(cap.currentExtent.width != UINT32_MAX){
+        return cap.currentExtent;
+    }else{
+        int w,h;
+        glfwGetFramebufferSize(window,&w,&h);
+        VkExtent2D ret = {(uint32_t)w,(uint32_t)h};
+        ret.width = std::clamp((uint32_t)w,cap.minImageExtent.width,cap.maxImageExtent.width);
+        ret.height = std::clamp((uint32_t)h,cap.minImageExtent.height,cap.maxImageExtent.height);
+        return ret;
+    }
+}
+
+VkPresentModeKHR choose_swapchains_present_mode(std::span<VkPresentModeKHR> modes){
+    if(std::find(modes.begin(),modes.end(),VK_PRESENT_MODE_MAILBOX_KHR) != modes.end())
+        return VK_PRESENT_MODE_MAILBOX_KHR;
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkSurfaceFormatKHR choose_surface_format(std::span<VkSurfaceFormatKHR> formats){
+    if(formats.empty())return {(VkFormat)0,(VkColorSpaceKHR)0};
+    for(auto & fmt : formats){
+        if(fmt.format == VK_FORMAT_R8G8B8A8_SRGB && 
+        fmt.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR){
+            return fmt;
+        }
+    }
+    return formats[0];
+}
+
+SwapChainsSupportDetails get_swapchains_support_detail(VkPhysicalDevice dev,VkSurfaceKHR surface){
+    SwapChainsSupportDetails det {};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev,surface,&det.capabilities);
+    {
+        uint32_t fmt_c;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(dev,surface,&fmt_c,nullptr);
+        det.formats.resize(fmt_c);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(dev,surface,&fmt_c,det.formats.data());
+    }
+    {
+        uint32_t mode_c;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(dev,surface,&mode_c,nullptr);
+        det.presentModes.resize(mode_c);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(dev,surface,&mode_c,det.presentModes.data());
+    }
+    return det;
+}
+
 bool check_validation_layer_support(std::span<const char *> data){
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount,nullptr);
@@ -63,18 +111,14 @@ QueueFamilyIndices find_queue_family(VkPhysicalDevice dev,VkSurfaceKHR surface){
     int i = -1;
     for(auto & q : qeFamilies){
         ++i;
-        if(!ind.graphicsFamily && q.queueFlags & VK_QUEUE_GRAPHICS_BIT){
+        if(q.queueFlags & VK_QUEUE_GRAPHICS_BIT){
             ind.graphicsFamily = i; 
-            continue;
         }
 
-        if(!ind.presentFamily){
-            VkBool32 presentSupport = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(dev,i,surface,&presentSupport);
-            if(presentSupport){
-                ind.presentFamily = i;
-                continue;
-            }
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(dev,i,surface,&presentSupport);
+        if(presentSupport){
+            ind.presentFamily = i;
         }
     }
 

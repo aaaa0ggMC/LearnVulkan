@@ -1,6 +1,5 @@
 #ifndef APP_H_INCLUDED
 #define APP_H_INCLUDED
-#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include <alib-g3/alogger.h>
@@ -37,6 +36,7 @@ struct Application{
     VkDevice device;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
+    VkSwapchainKHR swapChain;
 
     inline Application():
     lg ("LearnVK",logger),
@@ -58,6 +58,7 @@ struct Application{
     void vk_pickPhysicalDevice();
     void vk_createLogicalDevice();
     void vk_createSurface();
+    void vk_createSwapChain();
 
     ~Application();
 };
