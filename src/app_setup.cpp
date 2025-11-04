@@ -58,6 +58,13 @@ void Application::vk_createSwapChain(){
         lg(LOG_CRITI) << "Failed to create Vulkan swapchains:" << (int)result << endlog;
         std::exit(-1);
     }else lg(LOG_INFO) << "vkSwapChain:OK" << endlog;
+
+    vkGetSwapchainImagesKHR(device,swapChain,&imageCount,nullptr);
+    swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(device,swapChain,&imageCount,swapChainImages.data());
+
+    swapChainImageFormat = fmt.format;
+    swapChainExtent = extent;
 }
 
 void Application::vk_createSurface(){
