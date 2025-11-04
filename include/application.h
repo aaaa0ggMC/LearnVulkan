@@ -2,7 +2,7 @@
 #define APP_H_INCLUDED
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 #include <alib-g3/alogger.h>
 
 using namespace alib::g3;
@@ -19,6 +19,10 @@ static std::vector<const char *> app_validation_layers = {
     "VK_LAYER_KHRONOS_validation"
 };
 
+static std::vector<const char*> app_device_extensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 struct Application{
     Logger logger;
     LogFactory lg;
@@ -28,8 +32,11 @@ struct Application{
     /// Vulkan Data
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
-
+    VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice { VK_NULL_HANDLE };
+    VkDevice device;
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
 
     inline Application():
     lg ("LearnVK",logger),
@@ -49,6 +56,8 @@ struct Application{
     void vk_createInstance();
     void vk_setupDebugMessenger();
     void vk_pickPhysicalDevice();
+    void vk_createLogicalDevice();
+    void vk_createSurface();
 
     ~Application();
 };

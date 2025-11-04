@@ -2,11 +2,65 @@
 #include "vkutil.h"
 
 extern std::vector<const char *> app_validation_layers;
+extern std::vector<const char*> app_device_extensions;
 
 void Application::setupVulkan(){
     vk_createInstance();
     vk_setupDebugMessenger();
+    vk_createSurface();
     vk_pickPhysicalDevice();
+    vk_createLogicalDevice();
+}
+
+void Application::vk_createSurface(){
+    if(VkResult result = glfwCreateWindowSurface(instance,window,nullptr,&surface);
+        result != VK_SUCCESS){
+        lg(LOG_CRITI) << "Failed to create Vulkan surface!" << endlog;
+        std::exit(-1);
+    }else lg(LOG_INFO) << "vkSurface:OK" << endlog;
+}
+
+void Application::vk_createLogicalDevice(){
+    QueueFamilyIndices ind = find_queue_family(physicalDevice,surface);
+    if(!ind.ok()){
+        lg(LOG_CRITI) << "Failed to find related queue family in current physical device!" << endlog;
+        std::exit(-1);
+    }
+
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos {};
+    VkPhysicalDeviceFeatures deviceFeatures {};
+    float queuePriority = 1;
+
+    for(auto family : ind.gen()){
+        VkDeviceQueueCreateInfo queueCreateInfo {};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = family;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
+
+    VkDeviceCreateInfo createInfo {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pQueueCreateInfos = queueCreateInfos.data();
+    createInfo.queueCreateInfoCount = queueCreateInfos.size();
+    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.enabledExtensionCount = app_device_extensions.size();
+    createInfo.ppEnabledExtensionNames = app_device_extensions.data();
+
+    if(app_enable_validation){
+        createInfo.enabledLayerCount = app_validation_layers.size();
+        createInfo.ppEnabledLayerNames = app_validation_layers.data();
+    }else createInfo.enabledLayerCount = 0;
+
+    if(VkResult result = vkCreateDevice(physicalDevice,&createInfo,nullptr,&device);result != VK_SUCCESS){
+        lg(LOG_CRITI) << "Failed to create Vulkan logical device:" << (int)result << endlog;
+        std::exit(-1);
+    }else lg(LOG_INFO) << "vkDevice:Ok" << endlog;
+
+    vkGetDeviceQueue(device,*ind.graphicsFamily,0,&graphicsQueue);
+    vkGetDeviceQueue(device,*ind.presentFamily,0,&presentQueue);
 }
 
 void Application::vk_pickPhysicalDevice(){
@@ -35,21 +89,8 @@ void Application::vk_pickPhysicalDevice(){
         ++i;
 
         /// find queue families
-        {
-            uint32_t qe_c;
-            vkGetPhysicalDeviceQueueFamilyProperties(dev,&qe_c,nullptr);
-            std::vector<VkQueueFamilyProperties> qeFamilies (qe_c);
-            vkGetPhysicalDeviceQueueFamilyProperties(dev,&qe_c,qeFamilies.data());
-            bool ok = false;
-            for(auto & q : qeFamilies){
-                if(q.queueFlags & VK_QUEUE_GRAPHICS_BIT){
-                    ok = true;
-                    break;
-                }
-            }
-            if(!ok){
-                continue;
-            }
+        if(!find_queue_family(dev,surface).ok() || !check_device_extension_support(dev,app_device_extensions)){
+            continue;
         }
 
         if(devFeatures.geometryShader){
@@ -65,6 +106,10 @@ void Application::vk_pickPhysicalDevice(){
             selected = dev;
             s_i = i-1;
         }
+    }
+    if(s_i < 0){
+        lg(LOG_CRITI) << "Failed to select a GPU!" << endlog;
+        std::exit(-1);
     }
 
     lg(LOG_INFO) << "GPU seleted:GPU" << s_i << endlog;

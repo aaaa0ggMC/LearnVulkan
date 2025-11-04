@@ -10,11 +10,14 @@ void Application::setup(){
 
 void Application::cleanup(){
 
+    vkDestroyDevice(device,nullptr);
+
     if(app_enable_validation){
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,"vkDestroyDebugUtilsMessengerEXT");
         if(func != nullptr)func(instance,debugMessenger,nullptr);
     }
 
+    vkDestroySurfaceKHR(instance,surface,nullptr);
     vkDestroyInstance(instance,nullptr);
     // destroy window
     if(window)glfwDestroyWindow(window);
