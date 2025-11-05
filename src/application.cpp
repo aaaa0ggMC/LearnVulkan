@@ -8,7 +8,22 @@ void Application::setup(){
     setupVulkan();
 }
 
+void Application::drawFrame(){
+    vkWaitForFences(device,1,&fen_inFlight,VK_TRUE,UINT64_MAX);
+    vkResetFences(device,1,&fen_inFlight);
+}
+
 void Application::cleanup(){
+    vkDestroySemaphore(device,sem_imgAva,nullptr);
+    vkDestroySemaphore(device,sem_renderFin,nullptr);
+    vkDestroyFence(device,fen_inFlight,nullptr);
+    vkDestroyCommandPool(device,pool,nullptr);
+    for(auto framebuffer : swapChainFramebuffers){
+        vkDestroyFramebuffer(device,framebuffer,nullptr);
+    }
+    vkDestroyPipeline(device,graphicsPipeline,nullptr);
+    vkDestroyPipelineLayout(device,pipelineLayout,nullptr);
+    vkDestroyRenderPass(device,renderPass,nullptr);
     for(auto iv : swapChainImageViews){
         vkDestroyImageView(device,iv,nullptr);
     }

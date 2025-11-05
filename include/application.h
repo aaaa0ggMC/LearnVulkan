@@ -41,6 +41,19 @@ struct Application{
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
+    VkRenderPass renderPass;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
+    VkCommandPool pool;
+    VkCommandBuffer commandBuffer;
+    VkSemaphore sem_imgAva;
+    VkSemaphore sem_renderFin;
+    VkFence fen_inFlight;
+
+
+    VkRect2D scissor {};
+    VkViewport viewport {};
 
     inline Application():
     lg ("LearnVK",logger),
@@ -56,6 +69,9 @@ struct Application{
     void setupWindow();
     void setupVulkan();
 
+    /// draw
+    void drawFrame();
+
     /// vulkan setups
     void vk_createInstance();
     void vk_setupDebugMessenger();
@@ -65,6 +81,12 @@ struct Application{
     void vk_createSwapChain();
     void vk_createImageViews();
     void vk_createGraphicePipeline();
+    void vk_createRenderPass();
+    void vk_createFramebuffers();
+    void vk_createCommandPool();
+    void vk_createCommandBuffer();
+    void vk_recordCommandBuffer(VkCommandBuffer buf,uint32_t index);
+    void vk_createSyncObjects();
 
     ~Application();
 };
