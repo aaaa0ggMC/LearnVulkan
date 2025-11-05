@@ -9,6 +9,9 @@ void Application::setup(){
 }
 
 void Application::cleanup(){
+    for(auto iv : swapChainImageViews){
+        vkDestroyImageView(device,iv,nullptr);
+    }
     vkDestroySwapchainKHR(device,swapChain,nullptr);
     vkDestroyDevice(device,nullptr);
 

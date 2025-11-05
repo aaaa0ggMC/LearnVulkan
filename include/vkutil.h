@@ -53,4 +53,6 @@ VkPresentModeKHR choose_swapchains_present_mode(std::span<VkPresentModeKHR> mode
 
 VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR & cap,GLFWwindow*);
 
+VkShaderModule create_shader_module(VkDevice,const std::vector<char>& code);
+
 #endif

@@ -40,6 +40,7 @@ struct Application{
     std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
+    std::vector<VkImageView> swapChainImageViews;
 
     inline Application():
     lg ("LearnVK",logger),
@@ -62,6 +63,8 @@ struct Application{
     void vk_createLogicalDevice();
     void vk_createSurface();
     void vk_createSwapChain();
+    void vk_createImageViews();
+    void vk_createGraphicePipeline();
 
     ~Application();
 };

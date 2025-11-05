@@ -12,6 +12,142 @@ void Application::setupVulkan(){
     vk_pickPhysicalDevice();
     vk_createLogicalDevice();
     vk_createSwapChain();
+    vk_createImageViews();
+    vk_createGraphicePipeline();
+}
+
+static std::vector<char> readFile(std::string_view fp){
+    std::ifstream ifs(std::string(fp),std::ios::ate | std::ios::binary);
+    if(!ifs.is_open()){
+        return {};
+    }
+    size_t fsize = ifs.tellg();
+    std::vector<char> buf (fsize,0);
+    ifs.seekg(0);
+    ifs.read(buf.data(),fsize);
+    ifs.close();
+    return buf;
+}
+
+void Application::vk_createGraphicePipeline(){
+    VkShaderModule vert = create_shader_module(device,readFile("data/shaders/vert.spv"));
+    VkShaderModule frag = create_shader_module(device,readFile("data/shaders/frag.spv"));
+
+    if(!frag || !vert){
+        lg(LOG_CRITI) << "Failed to create vertex or fragment shaders!" << endlog;
+        std::exit(-1);
+    }
+    lg(LOG_INFO) << "vkShaderModule:OK" << endlog;
+
+    VkPipelineShaderStageCreateInfo infos[2];
+    infos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    infos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    infos[0].module = vert;
+    infos[0].pName = "main";
+    infos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    infos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    infos[1].module = frag;
+    infos[1].pName = "main";
+
+    std::vector<VkDynamicState> dynamicStatse = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkPipelineDynamicStateCreateInfo dinfo {};
+    dinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dinfo.dynamicStateCount = dynamicStatse.size();
+    dinfo.pDynamicStates = dynamicStatse.data();
+
+    VkPipelineVertexInputStateCreateInfo vin {};
+    vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vin.vertexBindingDescriptionCount = 0;
+    vin.pVertexBindingDescriptions = nullptr;
+    vin.vertexAttributeDescriptionCount = 0;
+    vin.pVertexAttributeDescriptions = nullptr;
+
+    VkPipelineInputAssemblyStateCreateInfo assem {};
+    assem.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    assem.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    assem.primitiveRestartEnable = VK_FALSE;
+
+    VkViewport viewport {};
+    viewport.x = 0.f;
+    viewport.y = 0.f;
+    viewport.width = swapChainExtent.width;
+    viewport.height = swapChainExtent.height;
+    viewport.minDepth = 0;
+    viewport.maxDepth = 1;
+
+    VkRect2D scissor {};
+    scissor.offset = {0,0};
+    scissor.extent = swapChainExtent;
+
+    VkPipelineViewportStateCreateInfo vps {};
+    vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vps.viewportCount = 1;
+    vps.pViewports = &viewport;
+    vps.scissorCount = 1;
+    vps.pScissors = &scissor;
+
+    VkPipelineRasterizationStateCreateInfo raster {};
+    raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    raster.depthClampEnable = VK_FALSE;
+    raster.rasterizerDiscardEnable = VK_FALSE;
+    raster.polygonMode = VK_POLYGON_MODE_FILL;
+    raster.lineWidth = 1.0f;
+    raster.cullMode = VK_CULL_MODE_BACK_BIT;
+    raster.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    raster.depthBiasEnable = VK_FALSE;
+    raster.depthBiasClamp = 0.0f;
+    raster.depthBiasConstantFactor = 0.f;
+    raster.depthBiasSlopeFactor = 0.f;
+
+    VkPipelineMultisampleStateCreateInfo msamp;
+    msamp.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    msamp.sampleShadingEnable = VK_FALSE;
+    msamp.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    msamp.minSampleShading = 1.0f;
+    msamp.pSampleMask = nullptr;
+    msamp.alphaToCoverageEnable = VK_FALSE;
+    msamp.alphaToOneEnable = VK_FALSE;
+
+    VkPipelineColorBlendAttachmentState cblend {};
+    cblend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    cblend.blendEnable = VK_FALSE;
+
+    vkDestroyShaderModule(device,vert,nullptr);
+    vkDestroyShaderModule(device,frag,nullptr);
+}
+
+void Application::vk_createImageViews(){
+    swapChainImageViews.resize(swapChainImages.size());
+    for(size_t i = 0;i < swapChainImages.size();++i){
+        VkImageViewCreateInfo createInfo {};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = swapChainImages[i];
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = swapChainImageFormat;
+        createInfo.components = {
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY
+        };
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        if(VkResult r = vkCreateImageView(device,&createInfo,nullptr,&swapChainImageViews[i]);
+            r != VK_SUCCESS){
+            lg(LOG_CRITI) << "Failed to create image view for index " << i << ":" << (int)r << endlog; 
+            std::exit(-1);
+        }
+    }
+    lg(LOG_INFO) << "vkImageViews:OK" << endlog;
 }
 
 void Application::vk_createSwapChain(){

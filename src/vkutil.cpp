@@ -12,6 +12,17 @@ static bool operator==(const VkExtensionProperties & in,const char * d){
     return !std::strcmp(in.extensionName,d);
 }
 
+VkShaderModule create_shader_module(VkDevice dev,const std::vector<char>& code){
+    VkShaderModuleCreateInfo info {};
+    info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    info.codeSize = code.size();
+    info.pCode = (const uint32_t *)code.data();
+    VkShaderModule mod;
+    VkResult r = vkCreateShaderModule(dev,&info,nullptr,&mod);
+    if(r != VK_SUCCESS)return VK_NULL_HANDLE;
+    return mod;
+}
+
 VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR & cap,GLFWwindow * window){
     if(cap.currentExtent.width != UINT32_MAX){
         return cap.currentExtent;
