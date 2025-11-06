@@ -11,6 +11,42 @@ void Application::setup(){
 void Application::drawFrame(){
     vkWaitForFences(device,1,&fen_inFlight,VK_TRUE,UINT64_MAX);
     vkResetFences(device,1,&fen_inFlight);
+
+    uint32_t imgIndex;
+    vkAcquireNextImageKHR(device,swapChain,UINT64_MAX,sem_imgAva,VK_NULL_HANDLE,&imgIndex);
+
+    vkResetCommandBuffer(commandBuffer,0);
+    vk_recordCommandBuffer(commandBuffer,imgIndex);
+
+    VkSubmitInfo submitInfo {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore waitSemaphores[] = { sem_imgAva };
+    VkSemaphore signalSemaphores[] = { sem_renderFin };
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    if(VkResult r = vkQueueSubmit(graphicsQueue,1,&submitInfo,fen_inFlight);r != VK_SUCCESS){
+        lg(LOG_ERROR) << "Failed to submit this frame:" << (int)r << endlog;
+    }
+
+    VkSwapchainKHR swapChains[] = {swapChain};
+    VkPresentInfoKHR presentInfo {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &imgIndex;
+    presentInfo.pResults = nullptr;
+
+    vkQueuePresentKHR(presentQueue,&presentInfo);
 }
 
 void Application::cleanup(){
